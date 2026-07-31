@@ -85,6 +85,8 @@ IPAddress dm3IP(
 
 > **Hinweis:** WLAN-Zugangsdaten stehen im Klartext im Code. Bei Bedarf vor dem Teilen des Repos oder Wiederverwendung anpassen bzw. entfernen.
 
+**Kein Quellcode-Zugriff nötig, z.B. beim Flashen eines fertigen Release-Images:** mit den Platzhalterwerten findet der Controller beim ersten Boot 20 Sekunden lang kein WLAN und geht danach automatisch in den AP-Fallback (siehe [AP-Fallback](#funktionen) oben) — einfach mit dem Access Point `DM3-Setup-XXXX` verbinden, `http://192.168.4.1/` im Browser öffnen und dort WLAN-Zugangsdaten sowie DM3-IP eintragen. Kein Neuflashen oder Editieren der `.ino`-Datei nötig.
+
 Eine Übersicht der verwendeten DM3-RCP-Kommandos steht in [DM3_COMMANDS.md](DM3_COMMANDS.md).
 
 ## Flashen
