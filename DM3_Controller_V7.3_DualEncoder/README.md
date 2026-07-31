@@ -20,7 +20,7 @@ Allgemeine Projektbeschreibung, DM3-Protokoll und die volle Software-Funktionsli
 - Heltec LoRa32 V4.2 (ESP32-S3, LoRa-Funktion ungenutzt)
 - Onboard-SSD1306-OLED (128×64, I2C, fest verlötet)
 - 2x Inkremental-Drehencoder mit Taster
-- 1x zusätzlicher, dedizierter Menü-Taster
+- Menü-Taster: kein zusätzliches Bauteil — nutzt die vorhandene Onboard-USER/PRG-Taste des Boards
 - Akku: 1S Li-Ion 103450, 3,7 V, 2000 mAh / 7,4 Wh
 
 ### Pinbelegung
@@ -42,7 +42,9 @@ Allgemeine Projektbeschreibung, DM3-Protokoll und die volle Software-Funktionsli
 | Akku-ADC Freigabe (aktiv HIGH) | 37 |
 | Status-LED (weiß) | 35 |
 
-> GPIO0 ist beim ESP32-S3 der BOOT-Strapping-Pin; ein daran hängender Taster könnte beim Einschalten ungewollt den Bootloader auslösen, wenn er zu diesem Zeitpunkt gedrückt gehalten wird. Deshalb ist GPIO0 hier bewusst nur dem einfachen, dedizierten Menü-Taster vorbehalten und nicht mehr fest mit einem Encoder verdrahtet (anders als bei der Single-Encoder-Hardware).
+> GPIO0 ist beim ESP32-S3 der BOOT-Strapping-Pin; ein daran hängender Taster könnte beim Einschalten ungewollt den Bootloader auslösen, wenn er zu diesem Zeitpunkt gedrückt gehalten wird. Deshalb ist GPIO0 hier bewusst nur dem einfachen Menü-Taster vorbehalten und nicht mehr fest mit einem Encoder verdrahtet (anders als bei der Single-Encoder-Hardware). Praktischerweise hängt an GPIO0 auf dem Heltec-Board ohnehin schon die eingebaute USER/PRG-Taste — der Menü-Taster braucht also kein zusätzliches, extern angelötetes Bauteil.
+
+![Verkabelungsschema V7.3](Wiring_V7.3.svg)
 
 ## Flashen
 

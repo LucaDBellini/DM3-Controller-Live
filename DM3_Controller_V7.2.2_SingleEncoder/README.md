@@ -33,6 +33,8 @@ Die Änderungen wurden 1:1 von [V7.3_DualEncoder](../DM3_Controller_V7.3_DualEnc
 | Akku-ADC Freigabe (aktiv HIGH) | 37 |
 | Status-LED (weiß) | 35 |
 
+![Verkabelungsschema V7.2.2](Wiring_V7.2.2.svg)
+
 ## Flashen
 
 1. Diesen Ordner in der Arduino IDE öffnen (die `.ino`-Datei liegt im gleichnamigen Ordner)

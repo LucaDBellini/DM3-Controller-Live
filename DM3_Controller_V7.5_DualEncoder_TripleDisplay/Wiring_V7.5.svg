@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1260" font-family="Helvetica, Arial, sans-serif">
+  <rect width="1000" height="1260" fill="#ffffff"/>
+
+  <text x="500" y="30" text-anchor="middle" font-size="20" font-weight="bold" fill="#111">DM3 Controller V7.5 — Verkabelungsschema (Dual-Encoder + Triple-Display)</text>
+
+  <!-- Battery -->
+  <rect x="40" y="60" width="150" height="70" rx="6" fill="#fff3cd" stroke="#8a6d00" stroke-width="1.5"/>
+  <text x="115" y="88" text-anchor="middle" font-size="13" font-weight="bold" fill="#333">Li-Ion Akku</text>
+  <text x="115" y="106" text-anchor="middle" font-size="12" fill="#333">3,7V / 3000mAh</text>
+  <text x="52" y="72" font-size="12" fill="#333">+</text>
+  <text x="52" y="122" font-size="12" fill="#333">−</text>
+
+  <!-- + wire to switch -->
+  <line x1="190" y1="75" x2="230" y2="75" stroke="#111" stroke-width="2"/>
+  <circle cx="232" cy="75" r="3" fill="#111"/>
+  <line x1="235" y1="73" x2="270" y2="58" stroke="#111" stroke-width="2"/>
+  <circle cx="273" cy="75" r="3" fill="#111"/>
+  <text x="240" y="48" font-size="12" fill="#b30000" font-weight="bold">EIN/AUS-Schalter (SPST)</text>
+  <line x1="276" y1="75" x2="420" y2="75" stroke="#111" stroke-width="2"/>
+  <text x="330" y="68" text-anchor="middle" font-size="12" fill="#333">BATT+</text>
+
+  <!-- - wire direct to GND -->
+  <line x1="115" y1="130" x2="115" y2="150" stroke="#111" stroke-width="2"/>
+  <line x1="115" y1="150" x2="420" y2="150" stroke="#111" stroke-width="2"/>
+  <text x="330" y="143" text-anchor="middle" font-size="12" fill="#333">GND</text>
+
+  <!-- Board -->
+  <rect x="420" y="40" width="260" height="1110" rx="10" fill="#e8f0fe" stroke="#1a4fa0" stroke-width="2"/>
+  <text x="550" y="75" text-anchor="middle" font-size="16" font-weight="bold" fill="#1a3a6b">Heltec LoRa32 V4.2</text>
+  <text x="550" y="95" text-anchor="middle" font-size="13" fill="#1a3a6b">(ESP32-S3, LoRa ungenutzt)</text>
+
+  <circle cx="420" cy="75" r="3" fill="#111"/>
+  <circle cx="420" cy="150" r="3" fill="#111"/>
+
+  <!-- Display 1 = Onboard OLED (onboard, dashed) -->
+  <rect x="760" y="90" width="190" height="150" rx="6" fill="#e6f4ea" stroke="#1e7a34" stroke-width="1.5"/>
+  <text x="855" y="112" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e7a34">Display 1 (Onboard)</text>
+  <text x="855" y="129" text-anchor="middle" font-size="12" fill="#1e7a34">SSD1306, 128×64, I2C</text>
+  <text x="855" y="146" text-anchor="middle" font-size="11" fill="#1e7a34">Menü-/Status-Display</text>
+  <text x="855" y="161" text-anchor="middle" font-size="11" fill="#1e7a34">(Onboard, fest verlötet)</text>
+
+  <g font-size="12" fill="#333">
+    <line x1="680" y1="120" x2="760" y2="120" stroke="#888" stroke-width="1.5" stroke-dasharray="5,4"/>
+    <text x="690" y="115">GPIO17 · SDA</text>
+
+    <line x1="680" y1="150" x2="760" y2="150" stroke="#888" stroke-width="1.5" stroke-dasharray="5,4"/>
+    <text x="690" y="145">GPIO18 · SCL</text>
+
+    <line x1="680" y1="180" x2="760" y2="180" stroke="#888" stroke-width="1.5" stroke-dasharray="5,4"/>
+    <text x="690" y="175">GPIO21 · RST</text>
+
+    <line x1="680" y1="210" x2="760" y2="210" stroke="#888" stroke-width="1.5" stroke-dasharray="5,4"/>
+    <text x="686" y="205">GPIO36 · Vext (Display-Power)</text>
+  </g>
+
+  <!-- Encoder 1 -->
+  <rect x="760" y="260" width="190" height="120" rx="6" fill="#fdeeee" stroke="#a52a2a" stroke-width="1.5"/>
+  <text x="855" y="288" text-anchor="middle" font-size="13" font-weight="bold" fill="#8a2020">Encoder 1</text>
+  <text x="855" y="305" text-anchor="middle" font-size="12" fill="#8a2020">mit Taster</text>
+
+  <g font-size="12" fill="#333">
+    <line x1="680" y1="290" x2="760" y2="290" stroke="#111" stroke-width="1.5"/>
+    <text x="694" y="285">GPIO4 · A</text>
+
+    <line x1="680" y1="320" x2="760" y2="320" stroke="#111" stroke-width="1.5"/>
+    <text x="694" y="315">GPIO5 · B</text>
+
+    <line x1="680" y1="350" x2="760" y2="350" stroke="#111" stroke-width="1.5"/>
+    <text x="694" y="345">GPIO6 · Taster</text>
+  </g>
+
+  <!-- Encoder 2 -->
+  <rect x="760" y="400" width="190" height="120" rx="6" fill="#fdeeee" stroke="#a52a2a" stroke-width="1.5"/>
+  <text x="855" y="428" text-anchor="middle" font-size="13" font-weight="bold" fill="#8a2020">Encoder 2</text>
+  <text x="855" y="445" text-anchor="middle" font-size="12" fill="#8a2020">mit Taster</text>
+
+  <g font-size="12" fill="#333">
+    <line x1="680" y1="430" x2="760" y2="430" stroke="#111" stroke-width="1.5"/>
+    <text x="694" y="425">GPIO15 · A</text>
+
+    <line x1="680" y1="460" x2="760" y2="460" stroke="#111" stroke-width="1.5"/>
+    <text x="694" y="455">GPIO16 · B</text>
+
+    <line x1="680" y1="490" x2="760" y2="490" stroke="#111" stroke-width="1.5"/>
+    <text x="694" y="485">GPIO7 · Taster</text>
+  </g>
+
+  <!-- Menu button (onboard USER/PRG button, dashed) -->
+  <rect x="760" y="540" width="190" height="80" rx="6" fill="#eef0ff" stroke="#3b3b9e" stroke-width="1.5"/>
+  <text x="855" y="563" text-anchor="middle" font-size="13" font-weight="bold" fill="#2c2c80">Menü-Taster</text>
+  <text x="855" y="579" text-anchor="middle" font-size="11" fill="#2c2c80">(SETTINGS / Notausstieg)</text>
+  <text x="855" y="595" text-anchor="middle" font-size="11" fill="#2c2c80">= Onboard USER/PRG-Taste</text>
+
+  <g font-size="12" fill="#333">
+    <line x1="680" y1="575" x2="760" y2="575" stroke="#888" stroke-width="1.5" stroke-dasharray="5,4"/>
+    <text x="694" y="570">GPIO0</text>
+  </g>
+
+  <!-- Display 2 (external, solid) -->
+  <rect x="760" y="630" width="190" height="170" rx="6" fill="#e6f4ea" stroke="#1e7a34" stroke-width="1.5"/>
+  <text x="855" y="655" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e7a34">Display 2 (links)</text>
+  <text x="855" y="672" text-anchor="middle" font-size="12" fill="#1e7a34">SSD1306, 128×32</text>
+  <text x="855" y="687" text-anchor="middle" font-size="11" fill="#1e7a34">extern, eigener Software-I2C-Bus</text>
+
+  <g font-size="12" fill="#333">
+    <line x1="680" y1="705" x2="760" y2="705" stroke="#111" stroke-width="1.5"/>
+    <text x="690" y="700">GPIO34 · SDA</text>
+
+    <line x1="680" y1="730" x2="760" y2="730" stroke="#111" stroke-width="1.5"/>
+    <text x="690" y="725">GPIO38 · SCL</text>
+
+    <line x1="680" y1="755" x2="760" y2="755" stroke="#111" stroke-width="1.5"/>
+    <text x="694" y="750">3.3V (direkt)</text>
+
+    <line x1="680" y1="780" x2="760" y2="780" stroke="#111" stroke-width="1.5"/>
+    <text x="694" y="775">GND</text>
+  </g>
+
+  <!-- Display 3 (external, solid) -->
+  <rect x="760" y="820" width="190" height="170" rx="6" fill="#e6f4ea" stroke="#1e7a34" stroke-width="1.5"/>
+  <text x="855" y="845" text-anchor="middle" font-size="13" font-weight="bold" fill="#1e7a34">Display 3 (rechts)</text>
+  <text x="855" y="862" text-anchor="middle" font-size="12" fill="#1e7a34">SSD1306, 128×32</text>
+  <text x="855" y="877" text-anchor="middle" font-size="11" fill="#1e7a34">extern, eigener Software-I2C-Bus</text>
+
+  <g font-size="12" fill="#333">
+    <line x1="680" y1="895" x2="760" y2="895" stroke="#111" stroke-width="1.5"/>
+    <text x="690" y="890">GPIO39 · SDA</text>
+
+    <line x1="680" y1="920" x2="760" y2="920" stroke="#111" stroke-width="1.5"/>
+    <text x="690" y="915">GPIO40 · SCL</text>
+
+    <line x1="680" y1="945" x2="760" y2="945" stroke="#111" stroke-width="1.5"/>
+    <text x="694" y="940">3.3V (direkt)</text>
+
+    <line x1="680" y1="970" x2="760" y2="970" stroke="#111" stroke-width="1.5"/>
+    <text x="694" y="965">GND</text>
+  </g>
+
+  <!-- Status LED (onboard, dashed) -->
+  <rect x="760" y="1010" width="190" height="70" rx="6" fill="#fff8e1" stroke="#a58200" stroke-width="1.5"/>
+  <text x="855" y="1038" text-anchor="middle" font-size="13" font-weight="bold" fill="#7a6100">Status-LED (weiß)</text>
+  <text x="855" y="1055" text-anchor="middle" font-size="11" fill="#7a6100">(Onboard, fest verlötet)</text>
+
+  <g font-size="12" fill="#333">
+    <line x1="680" y1="1040" x2="760" y2="1040" stroke="#888" stroke-width="1.5" stroke-dasharray="5,4"/>
+    <text x="690" y="1035">GPIO35</text>
+  </g>
+
+  <!-- note: VBAT ADC internal -->
+  <rect x="440" y="1010" width="220" height="110" rx="6" fill="#f5f5f5" stroke="#888" stroke-width="1"/>
+  <text x="550" y="1029" text-anchor="middle" font-size="12" font-weight="bold" fill="#333">GPIO1 (VBAT-ADC)</text>
+  <text x="550" y="1046" text-anchor="middle" font-size="12" font-weight="bold" fill="#333">GPIO37 (ADC-Freigabe, HIGH)</text>
+  <text x="550" y="1065" text-anchor="middle" font-size="11" fill="#555">Board-interne Akku-Messschaltung</text>
+  <text x="550" y="1080" text-anchor="middle" font-size="11" fill="#555">(fest verdrahtet). Keine externe</text>
+  <text x="550" y="1095" text-anchor="middle" font-size="11" fill="#555">Verkabelung nötig.</text>
+
+  <!-- legend -->
+  <line x1="380" y1="1175" x2="415" y2="1175" stroke="#111" stroke-width="2"/>
+  <text x="420" y="1179" font-size="11" fill="#555">extern zu verkabeln</text>
+  <line x1="560" y1="1175" x2="595" y2="1175" stroke="#888" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="600" y="1179" font-size="11" fill="#555">onboard, fest verlötet</text>
+
+  <text x="500" y="1210" text-anchor="middle" font-size="11" fill="#777">Vereinfachtes Verkabelungsschema (kein EE-Schaltplan). Pinbelegung laut README-Pintabelle / offiziellem Heltec-Pinmap.</text>
+  <text x="500" y="1226" text-anchor="middle" font-size="10" fill="#999">GPIO0 ist der BOOT-Strapping-Pin des ESP32-S3 — deshalb hier bewusst nur der einfache Menü-Taster, kein Encoder.</text>
+  <text x="500" y="1241" text-anchor="middle" font-size="10" fill="#999">Display 2+3 haben dieselbe feste I2C-Adresse und brauchen deshalb je einen eigenen (software-gebitbangten) I2C-Bus.</text>
+</svg>

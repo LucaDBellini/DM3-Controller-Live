@@ -104,4 +104,4 @@ Passend zur eigenen Hardware zuerst den richtigen Ordner wählen (siehe [Hardwar
 
 Der Quellcode (`.ino`-Dateien) steht unter der [MIT-Lizenz](LICENSE) — frei nutzbar, veränderbar und weitergebbar, auch kommerziell, solange der Copyright-Hinweis erhalten bleibt.
 
-Die Fotos (`Front-DE-TD.jpg`, `Back-open-DE-TD.jpg`) stehen separat unter [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) — Namensnennung, nicht-kommerziell, Weitergabe unter gleichen Bedingungen.
+Die Fotos (`Front-DE-TD.jpg`, `Back-open-DE-TD.jpg`) und die Verkabelungsschemas (`Wiring_V*.svg`) stehen separat unter [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) — Namensnennung, nicht-kommerziell, Weitergabe unter gleichen Bedingungen.

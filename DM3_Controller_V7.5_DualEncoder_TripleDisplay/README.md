@@ -34,7 +34,7 @@ Allgemeine Projektbeschreibung, DM3-Protokoll und die volle Software-Funktionsli
 - Onboard-SSD1306-OLED (128×64, I2C, fest verlötet) — jetzt aktiv genutzt
 - 2x zusätzliches SSD1306-OLED, 128×32, I2C
 - 2x Inkremental-Drehencoder mit Taster
-- 1x zusätzlicher, dedizierter Menü-Taster
+- Menü-Taster: kein zusätzliches Bauteil — nutzt die vorhandene Onboard-USER/PRG-Taste des Boards
 - Akku: 1S Li-Ion 103665, 3,7 V, 3000 mAh / 11,1 Wh
 
 ### Pinbelegung
@@ -67,6 +67,8 @@ Allgemeine Projektbeschreibung, DM3-Protokoll und die volle Software-Funktionsli
 **Wichtige Performance-Anmerkung:** Software-I2C ist auf diesem Board sehr langsam (~280ms pro Frame und Display, gemessen — `setBusClock()` ändert daran nichts). Bei drei Displays, die alle in `loop()` aktualisiert würden, blockiert das lange genug, dass kurze Tastendrücke (Menü-Taster, Mute) komplett verschluckt werden. Fix: alle drei Displays werden in einem eigenen FreeRTOS-Task auf dem zweiten CPU-Kern (Core 0) aktualisiert, komplett getrennt von `loop()` (Core 1), das dadurch immer sofort auf Encoder/Taster reagiert. Alle Display-Objekt-Zugriffe (inkl. `setContrast()` für den Ruhezustand) laufen bewusst ausschließlich in diesem einen Task, um gleichzeitige I2C-Bus-Zugriffe von zwei Kernen zu vermeiden.
 
 **GPIO34/38/39/40 als Display-Pins:** diese sind in Heltecs Dokumentation für andere Board-Varianten teils als „reserviert für Flash/SubSPI" bzw. „optionales JTAG" gelistet, funktionieren auf diesem konkreten V4.2-Board aber nachweislich als normale GPIOs (wie bereits 35/36/37 für LED/Vext/Akku).
+
+![Verkabelungsschema V7.5](Wiring_V7.5.svg)
 
 ## Flashen
 
