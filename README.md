@@ -99,3 +99,9 @@ Passend zur eigenen Hardware zuerst den richtigen Ordner wählen (siehe [Hardwar
 4. WLAN- und DM3-Konfiguration anpassen (`wifiSSID`/`wifiPassword`/`dm3IP` in der `.ino`-Datei, zusätzlich direkt am Gerät über SETTINGS änderbar)
 5. **„USB CDC On Boot" auf „Enabled" stellen** – ohne diese Option bleibt die serielle Ausgabe (`Serial.println`-Statusmeldungen) über den USB-Port unsichtbar, da sie sonst auf die nicht angeschlossenen UART-Pins geht
 6. Hochladen
+
+## Lizenz
+
+Der Quellcode (`.ino`-Dateien) steht unter der [MIT-Lizenz](LICENSE) — frei nutzbar, veränderbar und weitergebbar, auch kommerziell, solange der Copyright-Hinweis erhalten bleibt.
+
+Die Fotos (`Front-DE-TD.jpg`, `Back-open-DE-TD.jpg`) stehen separat unter [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) — Namensnennung, nicht-kommerziell, Weitergabe unter gleichen Bedingungen.
