@@ -66,7 +66,9 @@ Wer nicht selbst mit der Arduino IDE kompilieren will: die Spalte "Fertiges Firm
 
 ## Konfiguration
 
-⚠️ **Vor dem Flashen unbedingt anpassen** — ganz oben in der jeweiligen Haupt-`.ino`-Datei (`DM3_Controller_V<version>.ino`) stehen Platzhalterwerte, die durch deine echten Daten ersetzt werden müssen:
+**Quellcode-Anpassung ist möglich, aber nicht nötig.** Mit den mitgelieferten Platzhalterwerten findet der Controller beim ersten Boot 20 Sekunden lang kein WLAN und geht danach automatisch in den AP-Fallback (siehe [AP-Fallback](#funktionen) oben): einfach mit dem Access Point `DM3-Setup-XXXX` verbinden, `http://192.168.4.1/` im Browser öffnen und dort WLAN-Zugangsdaten sowie DM3-IP eintragen. Kein Neuflashen, kein Editieren der `.ino`-Datei, kein Quellcode-Zugriff nötig — funktioniert genauso mit einem fertigen Release-Image.
+
+Wer die Zugangsdaten trotzdem lieber schon vor dem ersten Boot fest einprogrammiert haben will (z.B. bei mehreren baugleichen Geräten), kann das ganz oben in der jeweiligen Haupt-`.ino`-Datei (`DM3_Controller_V<version>.ino`) tun:
 
 ```cpp
 char wifiSSID[WIFI_MAX_LEN + 1] =
@@ -78,14 +80,12 @@ IPAddress dm3IP(
   0,0,0,0);  // YourMixerIP - IP-Adresse deines DM3 hier eintragen (z.B. 192,168,1,50)
 ```
 
-- `wifiSSID` / `wifiPassword` – Standard-WLAN-Zugangsdaten (zusätzlich direkt am Gerät oder per Web-Konfigurationsserver änderbar, siehe unten)
-- `dm3IP` – Standard-IP-Adresse des DM3 im Netzwerk (zusätzlich direkt am Gerät änderbar) — mit `0,0,0,0` verbindet sich der Controller mit nichts, bis eine echte IP eingetragen ist
+- `wifiSSID` / `wifiPassword` – Standard-WLAN-Zugangsdaten (zusätzlich jederzeit direkt am Gerät oder per Web-Konfigurationsserver änderbar)
+- `dm3IP` – Standard-IP-Adresse des DM3 im Netzwerk (zusätzlich direkt am Gerät änderbar) — mit `0,0,0,0` verbindet sich der Controller mit nichts, bis eine IP eingetragen ist (entweder im Code oder später über SETTINGS/Web)
 - `DM3_PORT` – Standardmäßig `49280`
 - Welche Input/Mix/Matrix-Kanäle in den freien Slots landen, ist direkt am Gerät über SETTINGS → CHANNELS einstellbar, keine Code-Änderung nötig
 
-> **Hinweis:** WLAN-Zugangsdaten stehen im Klartext im Code. Bei Bedarf vor dem Teilen des Repos oder Wiederverwendung anpassen bzw. entfernen.
-
-**Kein Quellcode-Zugriff nötig, z.B. beim Flashen eines fertigen Release-Images:** mit den Platzhalterwerten findet der Controller beim ersten Boot 20 Sekunden lang kein WLAN und geht danach automatisch in den AP-Fallback (siehe [AP-Fallback](#funktionen) oben) — einfach mit dem Access Point `DM3-Setup-XXXX` verbinden, `http://192.168.4.1/` im Browser öffnen und dort WLAN-Zugangsdaten sowie DM3-IP eintragen. Kein Neuflashen oder Editieren der `.ino`-Datei nötig.
+> **Hinweis:** Fest einprogrammierte WLAN-Zugangsdaten stehen im Klartext im Code. Bei Bedarf vor dem Teilen des Repos oder Wiederverwendung anpassen bzw. entfernen.
 
 Eine Übersicht der verwendeten DM3-RCP-Kommandos steht in [DM3_COMMANDS.md](DM3_COMMANDS.md).
 
