@@ -16,9 +16,9 @@ Basis für alle Varianten ist ein Heltec LoRa32 V4.2 (ESP32-S3, LoRa-Funktion un
 
 | Hardware | Encoder | Displays | Firmware | Fertiges Firmware-Image |
 |---|---|---|---|---|
-| Einsteiger-Ausbaustufe | 1 | Onboard-OLED (128×64) | [DM3_Controller_V7.2.2_SingleEncoder/](DM3_Controller_V7.2.2_SingleEncoder/README.md) | [Release v7.2.2-singleencoder](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.2.2-singleencoder) |
-| Zwei-Kanal-Ausbaustufe | 2 (unabhängig) | Onboard-OLED (128×64, geteilt) | [DM3_Controller_V7.3_DualEncoder/](DM3_Controller_V7.3_DualEncoder/README.md) | [Release v7.3-dualencoder](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.3-dualencoder) |
-| Vollausbau | 2 (unabhängig) | 2× eigenständiges 128×32 + Onboard-OLED als Menü-Display | [DM3_Controller_V7.5_DualEncoder_TripleDisplay/](DM3_Controller_V7.5_DualEncoder_TripleDisplay/README.md) | [Release v7.5-dualencoder-tripledisplay](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.5-dualencoder-tripledisplay) |
+| Einsteiger-Ausbaustufe | 1 | Onboard-OLED (128×64) | [V7.2.2](DM3_Controller_V7.2.2_SingleEncoder/README.md) | [Release v7.2.2-singleencoder](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.2.2-singleencoder) |
+| Zwei-Kanal-Ausbaustufe | 2 (unabhängig) | Onboard-OLED (128×64, geteilt) | [V7.3](DM3_Controller_V7.3_DualEncoder/README.md) | [Release v7.3-dualencoder](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.3-dualencoder) |
+| Vollausbau | 2 (unabhängig) | 2× eigenständiges 128×32 + Onboard-OLED als Menü-Display | [V7.5](DM3_Controller_V7.5_DualEncoder_TripleDisplay/README.md) | [Release v7.5-dualencoder-tripledisplay](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.5-dualencoder-tripledisplay) |
 
 Alle drei Firmware-Versionen teilen sich denselben Funktionskern (Kanalsteuerung, WLAN-Profile, Web-Konfigurationsserver, DM3-Protokoll) — Bedienkonzept und Display-Layout unterscheiden sich je nach Hardware. Details siehe jeweiliges Ordner-README.
 
