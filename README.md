@@ -91,7 +91,9 @@ Eine Übersicht der verwendeten DM3-RCP-Kommandos steht in [DM3_COMMANDS.md](DM3
 
 ## Flashen
 
-Passend zur eigenen Hardware zuerst den richtigen Ordner wählen (siehe [Hardware-Varianten](#hardware-varianten) oben), dann im jeweiligen Ordner-README nachschauen — dort stehen die genauen Schritte inkl. Pinbelegung. Kurzfassung, gilt für alle Varianten:
+**Zwei Wege:** entweder das fertige `.bin` aus den [Releases](#hardware-varianten) per `esptool` oder direkt im Browser (z.B. [ESP Web Tools](https://esphome.github.io/esp-web-tools/), kein Arduino IDE/keine Installation nötig) flashen — oder selbst mit der Arduino IDE aus dem Quellcode kompilieren, siehe unten.
+
+Für den Quellcode-Weg: passend zur eigenen Hardware zuerst den richtigen Ordner wählen (siehe [Hardware-Varianten](#hardware-varianten) oben), dann im jeweiligen Ordner-README nachschauen — dort stehen die genauen Schritte inkl. Pinbelegung. Kurzfassung, gilt für alle Varianten:
 
 1. Ordner der gewünschten Version in der Arduino IDE öffnen (die `.ino`-Datei muss im gleichnamigen Ordner liegen)
 2. Board auf Heltec LoRa32 V4.2 (bzw. passendes ESP32-S3-Board) einstellen
