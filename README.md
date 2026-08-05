@@ -16,11 +16,9 @@ Basis für alle Varianten ist ein Heltec LoRa32 V4.2 (ESP32-S3, LoRa-Funktion un
 
 | Hardware | Encoder | Displays | Firmware | Fertiges Firmware-Image |
 |---|---|---|---|---|
-| Einsteiger-Ausbaustufe | 1 | Onboard-OLED (128×64) | [V7.2.3](DM3_Controller_V7.2.3_SingleEncoder/README.md) | [Release v7.2.2-singleencoder](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.2.2-singleencoder) *(veraltet, siehe Hinweis unten)* |
-| Zwei-Kanal-Ausbaustufe | 2 (unabhängig) | Onboard-OLED (128×64, geteilt) | [V7.3.1](DM3_Controller_V7.3.1_DualEncoder/README.md) | [Release v7.3-dualencoder](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.3-dualencoder) *(veraltet, siehe Hinweis unten)* |
-| Vollausbau | 2 (unabhängig) | 2× eigenständiges 128×32 + Onboard-OLED als Menü-Display | [V7.6](DM3_Controller_V7.6_DualEncoder_TripleDisplay/README.md) | [Release v7.5-dualencoder-tripledisplay](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.5-dualencoder-tripledisplay) *(veraltet, siehe Hinweis unten)* |
-
-> **Hinweis (2026-08-05):** der Quellcode oben ist auf dem neuesten Stand (V7.2.3/V7.3.1/V7.6), die verlinkten Firmware-Images in den GitHub Releases sind aber noch die alten Versionen (V7.2.2/V7.3/V7.5) — neue Releases mit frisch kompilierten `.bin`-Images für die aktuellen Versionen stehen noch aus. Bis dahin: selbst aus dem Quellcode kompilieren (siehe [Flashen](#flashen)) für den aktuellen Stand.
+| Einsteiger-Ausbaustufe | 1 | Onboard-OLED (128×64) | [V7.2.3](DM3_Controller_V7.2.3_SingleEncoder/README.md) | [Release v7.2.3-singleencoder](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.2.3-singleencoder) |
+| Zwei-Kanal-Ausbaustufe | 2 (unabhängig) | Onboard-OLED (128×64, geteilt) | [V7.3.1](DM3_Controller_V7.3.1_DualEncoder/README.md) | [Release v7.3.1-dualencoder](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.3.1-dualencoder) |
+| Vollausbau | 2 (unabhängig) | 2× eigenständiges 128×32 + Onboard-OLED als Menü-Display | [V7.6](DM3_Controller_V7.6_DualEncoder_TripleDisplay/README.md) | [Release v7.6-dualencoder-tripledisplay](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.6-dualencoder-tripledisplay) |
 
 Alle drei Firmware-Versionen teilen sich denselben Funktionskern (Kanalsteuerung, WLAN-Profile, Web-Konfigurationsserver, DM3-Protokoll) — Bedienkonzept und Display-Layout unterscheiden sich je nach Hardware. Details siehe jeweiliges Ordner-README.
 
