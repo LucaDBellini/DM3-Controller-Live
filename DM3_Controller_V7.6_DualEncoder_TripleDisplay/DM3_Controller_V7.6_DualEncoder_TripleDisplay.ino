@@ -1,5 +1,5 @@
 // =================================================
-// DM3 Controller V7.5 (NUR Dual-Encoder + Triple-Display-Hardware)
+// DM3 Controller V7.6 (NUR Dual-Encoder + Triple-Display-Hardware)
 // Yamaha DM3 Multi-Channel Remote (Mute/Volume)
 // ESP32-S3, zwei unabhängige Encoder (zwei Kanäle gleichzeitig),
 // zwei eigenständige 128x32 SSD1306-Displays (eins pro Kanal, immer aktiv)
@@ -11,7 +11,7 @@
 // (siehe DM3_Controller_V7.4_DualEncoder_DualDisplay/).
 //
 // Aufgeteilt in mehrere Tabs:
-// - DM3_Controller_V7.5_DualEncoder_TripleDisplay.ino: Konfiguration, Setup, Loop
+// - DM3_Controller_V7.6_DualEncoder_TripleDisplay.ino: Konfiguration, Setup, Loop
 // - Network.ino: WLAN/DM3-Verbindung, Status-LED
 // - Input.ino: Encoder- und Taster-Bedienung
 // - Config.ino: Laden/Speichern in Preferences (Flash)
@@ -33,9 +33,9 @@
 // Jetzt veränderbar (statt const char*), da am Gerät über SETTINGS -> WIFI editierbar
 #define WIFI_MAX_LEN 32
 char wifiSSID[WIFI_MAX_LEN + 1] =
-  "YourSSID";
+  "DM3-test";
 char wifiPassword[WIFI_MAX_LEN + 1] =
-  "YourPassword";
+  "Test12345";
 
 // =================================================
 // WLAN Bearbeitung (SSID/Passwort)
@@ -115,26 +115,52 @@ unsigned long lastWifiTry = 0;
 #define DM3_PORT 49280
 WiFiClient dm3;
 IPAddress dm3IP(
-  0,0,0,0);  // YourMixerIP - IP-Adresse deines DM3 hier eintragen (z.B. 192,168,1,50)
+  10,0,41,173);
 
 bool dm3Online = false;
 unsigned long lastDM3Try = 0;
 unsigned long dm3RetryTime = 3000;
 
 // =================================================
-// DM3 Latenz-Messung (durchschnittliche Antwortzeit seit dem letzten Boot)
+// DM3-Netzwerk-Task (läuft dauerhaft auf Core 0)
 // =================================================
-// Ein Poll-Zyklus (pollDM3()) fragt Pegel+Mute für beide aktiven Kanäle ab
-// (4 "get"-Kommandos). Sobald alle 4 zugehörigen Antworten eingetroffen
-// sind, gilt der Zyklus als "ausgeführt" und die verstrichene Zeit fließt
-// per gleitendem Mittelwert (laufender Durchschnitt) in dm3AvgLatencyMs
-// ein. Näherungsweise: kommt eine Antwort erst nach dem nächsten Poll
-// (>50ms verspätet) an, wird sie fälschlich dem neuen Zyklus zugerechnet —
-// bei normaler LAN-Latenz (wenige ms) praktisch nie relevant.
+// dm3.print()/dm3.print() (Senden) kann laut ESP32-Arduino-Core-Quelle
+// (NetworkClient.cpp) im schlechtesten Fall bis zu 10 Sekunden blockieren
+// (fest einprogrammierter select()-Retry: 1s x 10 Versuche), wenn der
+// Socket-Sendepuffer mal nicht schreibbar wird (z.B. WLAN-Aussetzer vor
+// Ort) — das ist NICHT über dm3.setTimeout() konfigurierbar. Lief das
+// bisher in loop() direkt, fror damit die komplette Bedienung (Encoder,
+// Taster) für dieselbe Zeit ein. Deshalb: die komplette DM3-Socket-Ein-/
+// Ausgabe (Verbindung, Senden, Empfangen, Poll-Timing) läuft jetzt in
+// einem eigenen Task auf Core 0 — analog zum bestehenden displayTask, der
+// aus demselben Grund für die I2C-Displays existiert. loop() (Core 1)
+// sendet ausgehende Kommandos nur noch nicht-blockierend in eine Queue.
+QueueHandle_t dm3SendQueue;
+#define DM3_CMD_MAX_LEN 128
+#define DM3_SEND_QUEUE_LEN 32
+
+// =================================================
+// DM3 Latenz-Anzeige (Zeit des letzten abgeschlossenen Poll-Zyklus)
+// =================================================
+// Ein Poll-Zyklus (pollDM3()) fragt Pegel (+ alle MUTE_POLL_DIVIDER
+// Zyklen zusätzlich Mute) für beide aktiven Kanäle ab. Sobald alle
+// zugehörigen Antworten eingetroffen sind, gilt der Zyklus als
+// "ausgeführt" — dm3LastLatencyMs zeigt bewusst nur den zuletzt
+// gemessenen Wert, keinen laufenden Mittelwert mehr (war zuvor ein
+// gleitender Durchschnitt seit Boot, reagierte dadurch sehr träge auf
+// z.B. einen AP-Wechsel und war schwer als "ist es JETZT gut oder
+// schlecht" zu lesen). Ein neuer Zyklus startet erst, wenn der vorherige
+// entweder vollständig beantwortet wurde ODER POLL_TIMEOUT_MS
+// überschritten ist (siehe loop-Trigger in Network.ino::dm3NetworkTask)
+// — vorher wurde bei JEDEM Poll (alle 50ms) pollSentAt/
+// pollResponsesExpected bedingungslos zurückgesetzt, wodurch verspätete
+// Antworten der alten Runde der neuen zugerechnet wurden und die Messung
+// bei Latenz >50ms unbrauchbar wurde.
 unsigned long pollSentAt = 0;
 int pollResponsesExpected = 0;
 int pollResponsesReceived = 0;
-unsigned long dm3AvgLatencyMs = 0;
+#define POLL_TIMEOUT_MS 500
+unsigned long dm3LastLatencyMs = 0;
 unsigned long dm3LatencySamples = 0;
 
 // =================================================
@@ -472,6 +498,9 @@ Preferences prefs;
 // =================================================
 void connectWiFi();
 void connectDM3();
+void checkWifiRoaming();
+void surveyBestAP();
+String bssidToStr(uint8_t *bssid);
 void sendDM3(String cmd);
 void pollDM3();
 void readDM3();
@@ -532,6 +561,7 @@ void drawChannel1Screen();
 void drawChannel2Screen();
 void drawMenuScreen();
 void displayTask(void *pvParameters);
+void dm3NetworkTask(void *pvParameters);
 
 // =================================================
 // Setup
@@ -607,7 +637,9 @@ void setup() {
   setupWebServerRoutes();
   connectWiFi();
   delay(500);
-  connectDM3();
+  dm3SendQueue =
+    xQueueCreate(
+      DM3_SEND_QUEUE_LEN,DM3_CMD_MAX_LEN);
   bootTime = millis();
   Serial.println(
     "[t=" + String(bootTime) + "] BOOTTIME SET");
@@ -622,6 +654,11 @@ void setup() {
   // gleichzeitige I2C-Bus-Zugriffe von zwei Kernen zu vermeiden.
   xTaskCreatePinnedToCore(
     displayTask,"Display",8192,NULL,1,NULL,0);
+  // Siehe Kommentar bei dm3SendQueue weiter oben: komplette DM3-Socket-
+  // I/O läuft hier, damit ein blockierendes dm3.print()/dm3.read() nie
+  // die Bedienung auf Core 1 (loop()) einfrieren lässt.
+  xTaskCreatePinnedToCore(
+    dm3NetworkTask,"DM3Net",4096,NULL,1,NULL,0);
 }
 
 // =================================================
@@ -709,11 +746,9 @@ void loop() {
     Serial.println(
       "[t=" + String(millis()) + "] WIFI CONNECTED " + WiFi.localIP().toString());
   }
-  // DM3 prüfen
-  if (
-    WiFi.status() == WL_CONNECTED && !dm3.connected()) {
-    connectDM3();
-  }
+  // DM3-Verbindung, Senden/Empfangen und Poll-Timing laufen komplett in
+  // dm3NetworkTask (Core 0) — siehe Kommentar bei dm3SendQueue weiter
+  // oben. loop() (Core 1) fasst den dm3-Socket nicht mehr direkt an.
   updateWebServer();
   // Status LED
   if (
@@ -721,14 +756,6 @@ void loop() {
     digitalWrite(
       WHITE_LED,LOW);
     ledOn = false;
-  }
-  // DM3 Daten
-  readDM3();
-  // DM3 Polling
-  if (
-    dm3.connected() && millis() - lastPoll >= POLL_TIME) {
-    pollDM3();
-    lastPoll = millis();
   }
   // Akku
   if (

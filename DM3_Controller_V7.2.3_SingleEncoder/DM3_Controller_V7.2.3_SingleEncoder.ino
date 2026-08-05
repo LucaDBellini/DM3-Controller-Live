@@ -1,17 +1,16 @@
 // =================================================
-// DM3 Controller V7.3 (NUR Dual-Encoder-Hardware)
+// DM3 Controller V7.2.3 (Single-Encoder-Hardware)
 // Yamaha DM3 Multi-Channel Remote (Mute/Volume)
-// ESP32-S3, zwei unabhängige Encoder (zwei Kanäle gleichzeitig)
-//
-// Läuft NICHT auf der Single-Encoder-Hardware (siehe DM3_Controller_V7.2.1_SingleEncoder/).
+// ESP32-S3
 //
 // Aufgeteilt in mehrere Tabs:
-// - DM3_Controller_V7.3_DualEncoder.ino: Konfiguration, Setup, Loop
+// - DM3_Controller_V7.2.3_SingleEncoder.ino: Konfiguration, Setup, Loop
 // - Network.ino: WLAN/DM3-Verbindung, Status-LED
 // - Input.ino: Encoder- und Taster-Bedienung
 // - Config.ino: Laden/Speichern in Preferences (Flash)
 // - Battery.ino: Akku messen und anzeigen
 // - Display.ino: OLED-Bildschirme
+// - WebConfig.ino: Web-Konfigurationsserver + AP-Fallback
 // =================================================
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -28,9 +27,9 @@
 // Jetzt veränderbar (statt const char*), da am Gerät über SETTINGS -> WIFI editierbar
 #define WIFI_MAX_LEN 32
 char wifiSSID[WIFI_MAX_LEN + 1] =
-  "YourSSID";
+  "DM3-test";
 char wifiPassword[WIFI_MAX_LEN + 1] =
-  "YourPassword";
+  "Test12345";
 
 // =================================================
 // WLAN Bearbeitung (SSID/Passwort)
@@ -105,17 +104,21 @@ unsigned long staLostSince = 0;
 unsigned long lastWifiTry = 0;
 
 // =================================================
-// DM3 Latenz-Messung (durchschnittliche Antwortzeit seit dem letzten Boot)
+// DM3 Latenz-Anzeige (Zeit des letzten abgeschlossenen Poll-Zyklus)
 // =================================================
-// Ein Poll-Zyklus (pollDM3()) fragt Pegel+Mute für beide aktiven Kanäle ab
-// (4 "get"-Kommandos). Sobald alle 4 zugehörigen Antworten eingetroffen
-// sind, gilt der Zyklus als "ausgeführt" und die verstrichene Zeit fließt
-// per gleitendem Mittelwert (laufender Durchschnitt) in dm3AvgLatencyMs
-// ein.
+// Ein Poll-Zyklus (pollDM3()) fragt Pegel (+ alle MUTE_POLL_DIVIDER
+// Zyklen zusätzlich Mute) ab. Sobald alle zugehörigen Antworten
+// eingetroffen sind, gilt der Zyklus als "ausgeführt" —
+// dm3LastLatencyMs zeigt bewusst nur den zuletzt gemessenen Wert, keinen
+// laufenden Mittelwert (der reagierte sehr träge auf z.B. einen
+// AP-Wechsel). Ein neuer Zyklus startet erst, wenn der vorherige
+// entweder vollständig beantwortet wurde ODER POLL_TIMEOUT_MS
+// überschritten ist (siehe loop-Trigger in Network.ino::dm3NetworkTask).
 unsigned long pollSentAt = 0;
 int pollResponsesExpected = 0;
 int pollResponsesReceived = 0;
-unsigned long dm3AvgLatencyMs = 0;
+#define POLL_TIMEOUT_MS 500
+unsigned long dm3LastLatencyMs = 0;
 unsigned long dm3LatencySamples = 0;
 
 // =================================================
@@ -124,11 +127,26 @@ unsigned long dm3LatencySamples = 0;
 #define DM3_PORT 49280
 WiFiClient dm3;
 IPAddress dm3IP(
-  0,0,0,0);  // YourMixerIP - IP-Adresse deines DM3 hier eintragen (z.B. 192,168,1,50)
+  10,0,41,173);
 
 bool dm3Online = false;
 unsigned long lastDM3Try = 0;
 unsigned long dm3RetryTime = 3000;
+
+// =================================================
+// DM3-Netzwerk-Task (läuft dauerhaft auf Core 0)
+// =================================================
+// dm3.print()/dm3.read() kann laut ESP32-Arduino-Core-Quelle im
+// schlechtesten Fall mehrere Sekunden blockieren (z.B. bei WLAN-
+// Aussetzern) — nicht über dm3.setTimeout() konfigurierbar. Lief das
+// bisher in loop() direkt, fror damit die komplette Bedienung (Encoder,
+// Taster) für dieselbe Zeit ein. Deshalb: die komplette DM3-Socket-Ein-/
+// Ausgabe (Verbindung, Senden, Empfangen, Poll-Timing) läuft in einem
+// eigenen Task auf Core 0. loop() (Core 1) sendet ausgehende Kommandos
+// nur noch nicht-blockierend in eine Queue.
+QueueHandle_t dm3SendQueue;
+#define DM3_CMD_MAX_LEN 128
+#define DM3_SEND_QUEUE_LEN 32
 
 // =================================================
 // Kanäle (Mute/Volume für ST Master + frei wählbare Input/Mix/Matrix-Kanäle)
@@ -136,11 +154,9 @@ unsigned long dm3RetryTime = 3000;
 // ST Master ist immer da (RCP-Pfad "St", Index 0, kein Slot nötig).
 // Zusätzlich 7 frei konfigurierbare Slots: 3x Input, 2x Mix, 2x Matrix.
 // Jeder Slot ist einzeln aktivierbar/deaktivierbar (SETTINGS -> CHANNEL ->
-// INPUT/MIX/MATRIX -> SLOT n). Encoder 1 und Encoder 2 zeigen/steuern
-// jeweils ihren EIGENEN, unabhängigen Kanal gleichzeitig (activeSlot1/
-// activeSlot2). Langer Druck auf dem jeweiligen Encoder-Taster wandert
-// der Reihe nach (mit Wraparound) durch alle AKTIVIERTEN Slots dieses
-// Encoders, ohne den anderen Encoder zu beeinflussen.
+// INPUT/MIX/MATRIX -> SLOT n). Langer Druck auf dem MASTER-/Kanal-Screen
+// wandert der Reihe nach durch alle AKTIVIERTEN Slots in der Array-Reihenfolge
+// (also erst Input, dann Mix, dann Matrix) und landet danach in SETTINGS.
 #define CT_INCH 0
 #define CT_MIX 1
 #define CT_MTRX 2
@@ -184,8 +200,7 @@ ChSlot chSlots[EXTRA_SLOT_COUNT] = {
   {CT_MTRX,2,false}
 };
 // SLOT_MASTER = ST Master, 0..EXTRA_SLOT_COUNT-1 = Index in chSlots[]
-int activeSlot1 = SLOT_MASTER;
-int activeSlot2 = SLOT_MASTER;
+int activeSlot = SLOT_MASTER;
 
 // =================================================
 // Kanalnamen (vom DM3 abgefragt)
@@ -227,56 +242,31 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C oled(
   OLED_SDA);
 
 // =================================================
-// Encoder 1 (Kanal 1 / Menü-Navigation)
+// Encoder
 // =================================================
-// A/B gegenüber Encoder 2 vertauscht: auf dieser physischen Einheit war
-// die Drehrichtung sonst umgekehrt (hoch = Pegel runter).
-#define ENC1_A 5
-#define ENC1_B 4
-#define ENC1_SW 6
-ESP32Encoder encoder1;
-long lastEncoder1 = 0;
-unsigned long buttonStart1 = 0;
+#define ENC_A 16
+#define ENC_B 15
+#define ENC_SW 0
+ESP32Encoder encoder;
+long lastEncoder = 0;
+unsigned long buttonStart = 0;
 #define LONG_PRESS_TIME 600
 
 // =================================================
-// Encoder 2 (Kanal 2) — komplett unabhängig, bedient jederzeit seinen
-// eigenen Kanal, unabhängig vom aktuellen Menüzustand. Taster auf GPIO7
-// statt GPIO0, da GPIO0 der BOOT-Strapping-Pin ist und jetzt dem
-// separaten Menü-Taster vorbehalten bleibt.
+// DM3 Werte
 // =================================================
-#define ENC2_A 16
-#define ENC2_B 15
-#define ENC2_SW 7
-ESP32Encoder encoder2;
-long lastEncoder2 = 0;
-unsigned long buttonStart2 = 0;
-
-// =================================================
-// Menü-Taster — eigener, dedizierter Knopf nur zum Öffnen von SETTINGS
-// (ersetzt den bisherigen Weg über den langen Druck auf Encoder 1)
-// =================================================
-#define MENU_BTN 0
-
-// =================================================
-// DM3 Werte (pro Kanal/Encoder getrennt)
-// =================================================
-int level1 = -99999;
-int level2 = -99999;
-bool mute1 = false;
-bool mute2 = false;
+int masterLevel = -99999;
+bool masterMute = false;
 // Sperrfenster nach eigenem Mute-Toggle: verhindert, dass eine noch
 // unterwegs befindliche (veraltete) Poll-Antwort unseren gerade
 // gesetzten Zustand kurz wieder zurückdreht (sichtbares MUTE-Geflacker).
-unsigned long muteOverrideUntil1 = 0;
-unsigned long muteOverrideUntil2 = 0;
+unsigned long muteOverrideUntil = 0;
 #define MUTE_OVERRIDE_TIME 800
 // Gleiches Prinzip für den Fader-Pegel: nach einer eigenen Encoder-Änderung
 // kurz keine Poll-Antworten übernehmen, sonst überschreibt eine noch
 // veraltete Antwort den gerade gesetzten Wert wieder (Zahl springt hoch
 // und dann wieder zurück).
-unsigned long levelOverrideUntil1 = 0;
-unsigned long levelOverrideUntil2 = 0;
+unsigned long levelOverrideUntil = 0;
 #define LEVEL_OVERRIDE_TIME 400
 
 // =================================================
@@ -426,15 +416,16 @@ Preferences prefs;
 // =================================================
 void connectWiFi();
 void connectDM3();
+void checkWifiRoaming();
+void surveyBestAP();
+String bssidToStr(uint8_t *bssid);
+void dm3NetworkTask(void *pvParameters);
 void sendDM3(String cmd);
 void pollDM3();
 void readDM3();
 void parseDM3(String msg);
-void handleEncoder1();
-void handleButton1();
-void handleEncoder2();
-void handleButton2();
-void handleMenuButton();
+void handleEncoder();
+void handleButton();
 void loadConfig();
 void saveConfig();
 void loadIPEdit();
@@ -457,12 +448,10 @@ void startApFallback();
 void stopApFallback();
 void updateWebServer();
 void setupWebServerRoutes();
-String channelPath(int slot);
-int channelIdx(int slot);
-void resetChannelState(int which);
+String channelPath();
+int channelIdx();
+void resetChannelState();
 int nextEnabledSlot(int from);
-int nextEnabledSlotWrap(int from);
-int nextEnabledSlotWrapExcl(int from, int exclude);
 int typeSlotBase(int type);
 int typeSlotCount(int type);
 String inputChannelLabel(int num);
@@ -481,7 +470,6 @@ void drawBattery(int x, int y, int percent);
 void drawBatteryEmpty(int x, int y);
 void drawBatteryIndicator(int x, int y);
 void drawWebIcon(int x, int y);
-void drawScrollingLabel(int x0, int x1, int y, String text, int &offset, unsigned long &lastMove);
 void drawScreen();
 
 // =================================================
@@ -502,13 +490,7 @@ void setup() {
   oled.setFont(
     u8g2_font_6x12_tf);
   pinMode(
-    ENC1_SW,
-    INPUT_PULLUP);
-  pinMode(
-    ENC2_SW,
-    INPUT_PULLUP);
-  pinMode(
-    MENU_BTN,
+    ENC_SW,
     INPUT_PULLUP);
   pinMode(
     WHITE_LED,
@@ -519,32 +501,20 @@ void setup() {
   delay(200);
   ESP32Encoder::useInternalWeakPullResistors =
     puType::up;
-  encoder1.attachHalfQuad(
-    ENC1_A,
-    ENC1_B);
-  encoder1.clearCount();
-  lastEncoder1 =
-    encoder1.getCount();
-  encoder2.attachHalfQuad(
-    ENC2_A,
-    ENC2_B);
-  encoder2.clearCount();
-  lastEncoder2 =
-    encoder2.getCount();
+  encoder.attachHalfQuad(
+    ENC_A,
+    ENC_B);
+  encoder.clearCount();
+  lastEncoder =
+    encoder.getCount();
   loadConfig();
-  // Kanal 2 startet nicht auch auf ST Master (sonst zeigen beide Zeilen
-  // anfangs dasselbe), sondern gleich auf dem ersten aktivierten Kanal,
-  // falls einer konfiguriert ist. Kanal 1 bleibt auf ST Master.
-  int firstOther =
-    nextEnabledSlot(
-      SLOT_MASTER);
-  activeSlot2 =
-    (firstOther != SLOT_NONE) ? firstOther : SLOT_MASTER;
   initApSSID();
   setupWebServerRoutes();
   connectWiFi();
   delay(500);
-  connectDM3();
+  dm3SendQueue =
+    xQueueCreate(
+      DM3_SEND_QUEUE_LEN,DM3_CMD_MAX_LEN);
   bootTime = millis();
   Serial.println(
     "[t=" + String(bootTime) + "] BOOTTIME SET");
@@ -552,6 +522,11 @@ void setup() {
   readBattery();
   lastBatteryRead = millis();
   drawScreen();
+  // Siehe Kommentar bei dm3SendQueue weiter oben: komplette DM3-Socket-
+  // I/O läuft hier, damit ein blockierendes dm3.print()/dm3.read() nie
+  // die Bedienung auf Core 1 (loop()) einfrieren lässt.
+  xTaskCreatePinnedToCore(
+    dm3NetworkTask,"DM3Net",4096,NULL,1,NULL,0);
 }
 
 // =================================================
@@ -601,11 +576,9 @@ void loop() {
     Serial.println(
       "[t=" + String(millis()) + "] WIFI CONNECTED " + WiFi.localIP().toString());
   }
-  // DM3 prüfen
-  if (
-    WiFi.status() == WL_CONNECTED && !dm3.connected()) {
-    connectDM3();
-  }
+  // DM3-Verbindung, Senden/Empfangen und Poll-Timing laufen komplett in
+  // dm3NetworkTask (Core 0) — siehe Kommentar bei dm3SendQueue weiter
+  // oben. loop() (Core 1) fasst den dm3-Socket nicht mehr direkt an.
   updateWebServer();
   // Status LED
   if (
@@ -614,14 +587,6 @@ void loop() {
       WHITE_LED,LOW);
     ledOn = false;
   }
-  // DM3 Daten
-  readDM3();
-  // DM3 Polling
-  if (
-    dm3.connected() && millis() - lastPoll >= POLL_TIME) {
-    pollDM3();
-    lastPoll = millis();
-  }
   // Akku
   if (
     millis() - lastBatteryRead >= BATTERY_READ_INTERVAL) {
@@ -629,11 +594,8 @@ void loop() {
     lastBatteryRead = millis();
   }
   // Bedienung
-  handleEncoder1();
-  handleButton1();
-  handleEncoder2();
-  handleButton2();
-  handleMenuButton();
+  handleEncoder();
+  handleButton();
 
   // =================================================
   // STEP AUTO EXIT

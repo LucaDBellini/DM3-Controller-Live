@@ -1,8 +1,8 @@
 # DM3 Controller V7.5 — Dual-Encoder + Triple-Display-Hardware
 
-Firmware für die Hardware-Revision mit **zwei** unabhängigen Drehencodern und **drei** Displays: zwei physisch getrennte 128×32-SSD1306-Displays (ein Display pro Kanal) PLUS das Heltec-Onboard-OLED (128×64), das jetzt als dediziertes Menü-/SETTINGS-Display genutzt wird statt ungenutzt zu bleiben.
+Firmware für die Hardware-Revision mit **zwei** unabhängigen Drehencodern und **drei** Displays: zwei physisch getrennte 128×32-SSD1306-Displays (ein Display pro Kanal, wie in [V7.4](../DM3_Controller_V7.4_DualEncoder_DualDisplay/)) PLUS das Heltec-Onboard-OLED (128×64), das jetzt als dediziertes Menü-/SETTINGS-Display genutzt wird statt ungenutzt zu bleiben.
 
-Läuft **nicht** auf der Single-Encoder-Hardware ([DM3_Controller_V7.2.2_SingleEncoder/](../DM3_Controller_V7.2.2_SingleEncoder/)) und **nicht** auf der Dual-Encoder-Hardware mit nur einem OLED ([DM3_Controller_V7.3_DualEncoder/](../DM3_Controller_V7.3_DualEncoder/)).
+Läuft **nicht** auf der Single-Encoder-Hardware ([DM3_Controller_V7.2.1_SingleEncoder/](../DM3_Controller_V7.2.1_SingleEncoder/)), **nicht** auf der Dual-Encoder-Hardware mit nur einem OLED ([DM3_Controller_V7.3_DualEncoder/](../DM3_Controller_V7.3_DualEncoder/)) und **nicht** auf der Dual-Display-Hardware ohne genutztes Onboard-OLED ([archive/DM3_Controller_V7.4_DualEncoder_DualDisplay/](../archive/DM3_Controller_V7.4_DualEncoder_DualDisplay/)).
 
 Allgemeine Projektbeschreibung, DM3-Protokoll und die volle Software-Funktionsliste stehen im [Haupt-README](../README.md).
 

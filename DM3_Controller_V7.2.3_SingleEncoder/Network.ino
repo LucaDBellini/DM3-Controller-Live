@@ -52,6 +52,207 @@ void connectWiFi() {
 }
 
 // =================================================
+// BSSID ALS HEX-STRING (fürs Log)
+// =================================================
+String bssidToStr(
+  uint8_t *bssid) {
+  char buf[18];
+  snprintf(
+    buf,sizeof(buf),"%02X:%02X:%02X:%02X:%02X:%02X",
+    bssid[0],bssid[1],bssid[2],bssid[3],bssid[4],bssid[5]);
+  return String(
+    buf);
+}
+
+// =================================================
+// BESTEN 2,4GHz-AP FÜR DIE DM3-ROUTE FINDEN (einmalig nach dem Boot)
+// =================================================
+// RSSI (siehe checkWifiRoaming() weiter unten) sagt nur etwas über die
+// Funkstrecke ESP32<->AP aus, NICHT über die tatsächliche Route/Backhaul
+// vom AP zum DM3 — ein AP kann volles Signal haben und trotzdem über
+// einen schlecht angebundenen Mesh-Hop zum DM3 geroutet sein (live
+// beobachtet: -51dBm Signal, aber 110+ms zum DM3, während ein Laptop auf
+// einem ANDEREN Band nur 5-6ms hatte). Das ESP32-S3 kann ohnehin nur
+// 2,4GHz (kein 5/6GHz-Hardware) — das hier testet deshalb der Reihe nach
+// jeden per SSID-Scan gefundenen 2,4GHz-AP, misst die echte TCP-Connect-
+// Zeit zum DM3 als Latenz-Proxy, und bleibt danach auf dem besten. Läuft
+// bewusst NUR EINMAL kurz nach dem Boot (nicht periodisch): jeder
+// Kandidat kostet eine echte Trennung+Neuverbindung, macht insgesamt
+// mehrere -zig Sekunden Aussetzer — unproblematisch fürs Timing selbst
+// (läuft isoliert in dm3NetworkTask, loop()/Bedienung bleibt unberührt),
+// aber ein wiederholter Aussetzer mitten in einer laufenden Show wäre
+// unerwünscht. Läuft in dm3NetworkTask, siehe dortigen Aufruf.
+#define AP_SURVEY_MAX_CANDIDATES 8
+#define AP_SURVEY_WIFI_TIMEOUT 4000
+#define AP_SURVEY_DM3_TIMEOUT 500
+bool apSurveyDone = false;
+
+void surveyBestAP() {
+  if (
+    apSurveyDone)
+    return;
+  if (
+    WiFi.status() != WL_CONNECTED)
+    return;
+  apSurveyDone = true;
+
+  int n =
+    WiFi.scanNetworks();
+  uint8_t candBSSID[AP_SURVEY_MAX_CANDIDATES][6];
+  int32_t candChannel[AP_SURVEY_MAX_CANDIDATES];
+  int candCount = 0;
+  for (
+    int i = 0; i < n && candCount < AP_SURVEY_MAX_CANDIDATES; i++) {
+    if (
+      WiFi.SSID(i) != String(wifiSSID))
+      continue;
+    memcpy(
+      candBSSID[candCount],WiFi.BSSID(i),6);
+    candChannel[candCount] =
+      WiFi.channel(i);
+    candCount++;
+  }
+  WiFi.scanDelete();
+
+  if (
+    candCount == 0) {
+    Serial.println(
+      "AP SURVEY: keine passenden APs gefunden, bleibe wie verbunden");
+    return;
+  }
+
+  Serial.println(
+    "AP SURVEY: teste " + String(candCount) + " AP(s) fuer beste DM3-Route...");
+  long bestLatency = -1;
+  int bestIdx = -1;
+  for (
+    int i = 0; i < candCount; i++) {
+    WiFi.disconnect();
+    dm3.stop();
+    WiFi.begin(
+      wifiSSID,wifiPassword,candChannel[i],candBSSID[i]);
+    unsigned long connectStart =
+      millis();
+    while (
+      WiFi.status() != WL_CONNECTED && millis() - connectStart < AP_SURVEY_WIFI_TIMEOUT) {
+      delay(
+        50);
+    }
+    if (
+      WiFi.status() != WL_CONNECTED) {
+      Serial.println(
+        "AP SURVEY: " + bssidToStr(candBSSID[i]) + " Ch" + String(candChannel[i]) + " -> kein WLAN-Connect");
+      continue;
+    }
+    unsigned long dm3Start =
+      millis();
+    bool ok =
+      dm3.connect(
+        dm3IP,DM3_PORT,AP_SURVEY_DM3_TIMEOUT);
+    unsigned long dm3Elapsed =
+      millis() - dm3Start;
+    dm3.stop();
+    if (
+      !ok) {
+      Serial.println(
+        "AP SURVEY: " + bssidToStr(candBSSID[i]) + " Ch" + String(candChannel[i]) + " -> DM3 nicht erreichbar");
+      continue;
+    }
+    Serial.println(
+      "AP SURVEY: " + bssidToStr(candBSSID[i]) + " Ch" + String(candChannel[i]) + " -> DM3-Connect " + String(dm3Elapsed) + "ms");
+    if (
+      bestIdx == -1 || (long)dm3Elapsed < bestLatency) {
+      bestLatency = dm3Elapsed;
+      bestIdx = i;
+    }
+  }
+
+  if (
+    bestIdx >= 0) {
+    Serial.println(
+      "AP SURVEY: bester AP " + bssidToStr(candBSSID[bestIdx]) + " Ch" + String(candChannel[bestIdx]) + " (" + String(bestLatency) + "ms), verbinde final");
+    WiFi.disconnect();
+    WiFi.begin(
+      wifiSSID,wifiPassword,candChannel[bestIdx],candBSSID[bestIdx]);
+  } else {
+    Serial.println(
+      "AP SURVEY: kein Kandidat erfolgreich, verbinde normal (automatische AP-Wahl)");
+    WiFi.begin(
+      wifiSSID,wifiPassword);
+  }
+}
+
+// =================================================
+// WLAN-ROAMING: periodisch nach einem deutlich stärkeren AP mit
+// derselben SSID suchen und dorthin wechseln
+// =================================================
+// ESP-IDF/Arduino roamt nicht von selbst: WiFi.begin() verbindet einmal
+// mit dem zum Verbindungszeitpunkt stärksten AP und bleibt dann fest
+// daran hängen — auch wenn später ein anderer AP derselben SSID (z.B. in
+// einem anderen Raum, näher am aktuellen Standort) viel stärker wäre.
+// Läuft bewusst in dm3NetworkTask (Core 0, siehe dort dessen Aufruf),
+// NICHT in loop(): WiFi.scanNetworks() blockiert 1-3 Sekunden, das würde
+// sonst wieder die Bedienung einfrieren lassen — genau das, was wir mit
+// dm3NetworkTask gerade erst behoben haben.
+#define ROAM_CHECK_INTERVAL 30000
+// Ziel-AP muss um mindestens so viel stärker sein (dBm), sonst bleibt
+// die Verbindung stehen — verhindert Hin-und-Her-Wechseln (Flapping)
+// zwischen zwei etwa gleich starken APs.
+#define ROAM_RSSI_MARGIN 8
+unsigned long lastRoamCheck = 0;
+
+void checkWifiRoaming() {
+  if (
+    WiFi.status() != WL_CONNECTED)
+    return;
+  // Scan würde den AP-Fallback-Kanal stören (siehe Kommentar in
+  // connectWiFi() zum selben Thema) — während des Fallbacks nicht roamen.
+  if (
+    apFallbackActive)
+    return;
+  if (
+    lastRoamCheck != 0 && millis() - lastRoamCheck < ROAM_CHECK_INTERVAL)
+    return;
+  lastRoamCheck = millis();
+
+  int currentRSSI =
+    WiFi.RSSI();
+  uint8_t currentBSSID[6];
+  memcpy(
+    currentBSSID,WiFi.BSSID(),6);
+
+  int n =
+    WiFi.scanNetworks();
+  int bestIdx = -1;
+  int bestRSSI = currentRSSI;
+  for (
+    int i = 0; i < n; i++) {
+    if (
+      WiFi.SSID(i) != String(wifiSSID))
+      continue;
+    if (
+      memcmp(WiFi.BSSID(i),currentBSSID,6) == 0)
+      continue;
+    if (
+      WiFi.RSSI(i) > bestRSSI + ROAM_RSSI_MARGIN) {
+      bestRSSI = WiFi.RSSI(i);
+      bestIdx = i;
+    }
+  }
+  if (
+    bestIdx >= 0) {
+    Serial.println(
+      "ROAM: wechsle zu staerkerem AP (" + String(bestRSSI) + "dBm, war " + String(currentRSSI) + "dBm)");
+    WiFi.begin(
+      wifiSSID,wifiPassword,WiFi.channel(bestIdx),WiFi.BSSID(bestIdx));
+  } else {
+    Serial.println(
+      "ROAM CHECK: aktueller AP " + String(currentRSSI) + "dBm, " + String(n) + " Netz(e) gescannt, kein staerkerer gefunden");
+  }
+  WiFi.scanDelete();
+}
+
+// =================================================
 // DM3 VERBINDEN
 // =================================================
 void connectDM3() {
@@ -113,21 +314,26 @@ void ledOnFor(
 // =================================================
 // DM3 SENDEN
 // =================================================
+// Blockiert NICHT: legt das Kommando nur in dm3SendQueue ab, das
+// eigentliche (potenziell mehrere Sekunden blockierende) dm3.print()
+// passiert ausschließlich in dm3NetworkTask (siehe dort). Aufrufbar aus
+// loop() (Encoder/Taster, Core 1) genau wie aus dm3NetworkTask selbst
+// (Polling, Core 0) — xQueueSend ist von beiden Cores aus sicher nutzbar.
+// Wartezeit 0: ist die Queue mal voll (sollte praktisch nie vorkommen),
+// wird das Kommando verworfen statt den Aufrufer blockieren zu lassen.
 void sendDM3(
   String cmd) {
-  if (
-    !dm3.connected())
-    return;
   if (
     cmd.startsWith(
       "set")) {
     Serial.println(
       "SEND: " + cmd);
   }
-  dm3.print(
-    cmd);
-  dm3.print(
-    "\n");
+  char buf[DM3_CMD_MAX_LEN];
+  snprintf(
+    buf,sizeof(buf),"%s",cmd.c_str());
+  xQueueSend(
+    dm3SendQueue,buf,0);
 }
 
 // =================================================
@@ -280,30 +486,75 @@ String masterLabel() {
 // =================================================
 // DM3 POLLING
 // =================================================
+// Aufrufer (dm3NetworkTask) startet einen neuen Zyklus nur, wenn der
+// vorherige entweder fertig ist (pollResponsesExpected==0) oder seit
+// POLL_TIMEOUT_MS keine Antwort mehr kam — siehe dort. Dadurch werden
+// pollSentAt/pollResponsesExpected nicht mehr bei jedem 50ms-Tick
+// bedingungslos zurückgesetzt, was zuvor verspätete Antworten der alten
+// Runde der neuen zurechnete und die Latenzmessung bei >50ms Latenz
+// verfälschte.
+//
+// Fader/On (Mute) wird bewusst nicht in jedem Zyklus mit abgefragt: live
+// (auf der Dual-Encoder/Triple-Display-Hardware, wo das zuerst gebaut und
+// getestet wurde) gemessen beantwortet das DM3 mehrere Kommandos eines
+// Zyklus offenbar seriell mit spürbarem Abstand pro Kommando — das ist
+// DM3-seitige Verarbeitung, keine Netzwerklatenz. Mute ändert sich in der
+// Praxis viel seltener als der Pegel, deshalb reicht es, Fader/On nur bei
+// jedem MUTE_POLL_DIVIDER-ten Zyklus mitzufragen (alle ~200ms statt alle
+// 50ms).
+#define MUTE_POLL_DIVIDER 4
+unsigned long pollCycleCount = 0;
+
 void pollDM3() {
   pollSentAt = millis();
-  pollResponsesExpected = 2;
+  bool includeMute =
+    (pollCycleCount % MUTE_POLL_DIVIDER == 0);
+  pollCycleCount++;
+  pollResponsesExpected =
+    includeMute ? 2 : 1;
   pollResponsesReceived = 0;
   sendDM3(
     "get MIXER:Current/" + channelPath() + "/Fader/Level " + String(channelIdx()) + " 0");
-  sendDM3(
-    "get MIXER:Current/" + channelPath() + "/Fader/On " + String(channelIdx()) + " 0");
+  if (
+    includeMute) {
+    sendDM3(
+      "get MIXER:Current/" + channelPath() + "/Fader/On " + String(channelIdx()) + " 0");
+  }
 }
 
 // =================================================
 // DM3 EMPFANG
 // =================================================
+// Bewusst NICHT readStringUntil('\n'): das pollt bei einer noch
+// unvollständig angekommenen Zeile (TCP-Fragmentierung, z.B. bei
+// WLAN-Störungen vor Ort) bis zu Stream::setTimeout() (Arduino-Default
+// 1000ms) und blockiert damit dm3NetworkTask unnötig lange. Stattdessen
+// byteweise in einen statischen Puffer sammeln — available()/read() sind
+// beim ESP32-Core immer nicht-blockierend (interner RX-Puffer arbeitet
+// durchgehend mit MSG_DONTWAIT), diese Funktion kann also nie hängen.
 void readDM3() {
+  static char rxBuf[300];
+  static size_t rxLen = 0;
   while (
     dm3.available()) {
-    String msg =
-      dm3.readStringUntil('\n');
-    msg.trim();
+    char c =
+      dm3.read();
     if (
-      msg.length() == 0)
-      continue;
-    parseDM3(
-      msg);
+      c == '\n') {
+      rxBuf[rxLen] = '\0';
+      String msg =
+        String(rxBuf);
+      msg.trim();
+      if (
+        msg.length() > 0) {
+        parseDM3(
+          msg);
+      }
+      rxLen = 0;
+    } else if (
+      c != '\r' && rxLen < sizeof(rxBuf) - 1) {
+      rxBuf[rxLen++] = c;
+    }
   }
 }
 
@@ -322,7 +573,7 @@ void parseDM3(
     "OK get MIXER:Current/" + channelPath() + "/Fader/On";
 
   // =================================================
-  // POLL-LATENZ: eine der zwei erwarteten Poll-Antworten ist eingetroffen
+  // POLL-LATENZ: eine der erwarteten Poll-Antworten ist eingetroffen
   // (unabhängig vom Override-Fenster, das nur die WERT-Übernahme betrifft,
   // nicht die reine Ankunft der Antwort)
   // =================================================
@@ -331,11 +582,9 @@ void parseDM3(
     pollResponsesReceived++;
     if (
       pollResponsesReceived >= pollResponsesExpected) {
-      unsigned long elapsed =
+      dm3LastLatencyMs =
         millis() - pollSentAt;
       dm3LatencySamples++;
-      dm3AvgLatencyMs =
-        dm3AvgLatencyMs + (elapsed - dm3AvgLatencyMs) / dm3LatencySamples;
       pollResponsesExpected = 0;
     }
   }
@@ -484,5 +733,57 @@ void parseChannelName(
     idx >= 0 && idx < maxIdx) {
     namePart.toCharArray(
       arr[idx],9);
+  }
+}
+
+// =================================================
+// DM3-NETZWERK-TASK (läuft dauerhaft auf Core 0)
+// =================================================
+// Besitzt den kompletten dm3-Socket exklusiv: Verbindungsaufbau, Senden
+// (aus dm3SendQueue), Empfangen, Poll-Timing. loop() (Core 1) fasst dm3.*
+// nicht mehr direkt an, außer lesend über dm3.connected() fürs Display.
+void dm3NetworkTask(
+  void *pvParameters) {
+  for (
+    ;;) {
+    surveyBestAP();
+    if (
+      WiFi.status() == WL_CONNECTED && !dm3.connected()) {
+      connectDM3();
+    }
+    checkWifiRoaming();
+
+    // Ausgehende Kommandos aus der Queue senden (hier darf dm3.print()
+    // im Zweifel blockieren — betrifft nur diesen Task, nicht loop()).
+    char cmd[DM3_CMD_MAX_LEN];
+    while (
+      xQueueReceive(
+        dm3SendQueue,cmd,0) == pdTRUE) {
+      if (
+        dm3.connected()) {
+        dm3.print(
+          cmd);
+        dm3.print(
+          "\n");
+      }
+    }
+
+    readDM3();
+
+    // Poll-Trigger: neuer Zyklus nur, wenn der vorherige fertig ist
+    // (pollResponsesExpected==0) oder seit POLL_TIMEOUT_MS keine
+    // Antwort mehr kam (dann gilt er als verloren, siehe Kommentar bei
+    // pollDM3()).
+    if (
+      dm3.connected() && millis() - lastPoll >= POLL_TIME) {
+      if (
+        pollResponsesExpected == 0 || millis() - pollSentAt > POLL_TIMEOUT_MS) {
+        pollDM3();
+      }
+      lastPoll = millis();
+    }
+
+    vTaskDelay(
+      pdMS_TO_TICKS(5));
   }
 }

@@ -876,7 +876,7 @@ void drawMenuScreen() {
   if (
     connected && dm3LatencySamples > 0) {
     dm3Line +=
-      " " + String(dm3AvgLatencyMs) + "ms";
+      " " + String(dm3LastLatencyMs) + "ms";
   }
   oledMenu.drawStr(
     0,

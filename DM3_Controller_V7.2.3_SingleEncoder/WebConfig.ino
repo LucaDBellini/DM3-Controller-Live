@@ -229,7 +229,7 @@ void handleRoot() {
     "verbunden (" + dm3IP.toString() + ")";
   if (
     dm3.connected() && dm3LatencySamples > 0) {
-    dm3Extra += " <span class='hint'>· ø " + String(dm3AvgLatencyMs) + " ms</span>";
+    dm3Extra += " <span class='hint'>· " + String(dm3LastLatencyMs) + " ms</span>";
   }
   h += "<div class='row'>DM3: " + statusBadge(dm3.connected(),dm3Extra,"offline (" + dm3IP.toString() + ")") + "</div>";
   h += "<div class='row'>Akku: " + String(batteryPercent) + "%</div>";

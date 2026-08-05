@@ -827,7 +827,7 @@ void drawScreen() {
     } else if (
       dm3LatencySamples > 0) {
       statusLine =
-        "DM3: " + String(dm3AvgLatencyMs) + "ms";
+        "DM3: " + String(dm3LastLatencyMs) + "ms";
     }
     if (
       statusLine.length() > 0) {

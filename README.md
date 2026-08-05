@@ -6,9 +6,9 @@ Die LoRa-Funktion des Boards wird von diesem Projekt nicht verwendet.
 
 | Vorderseite | Rückseite (offen) |
 |---|---|
-| ![Front](DM3_Controller_V7.5_DualEncoder_TripleDisplay/Front-DE-TD.jpg) | ![Back open](DM3_Controller_V7.5_DualEncoder_TripleDisplay/Back-open-DE-TD.jpg) |
+| ![Front](DM3_Controller_V7.6_DualEncoder_TripleDisplay/Front-DE-TD.jpg) | ![Back open](DM3_Controller_V7.6_DualEncoder_TripleDisplay/Back-open-DE-TD.jpg) |
 
-*Aktuellste Hardware-Ausbaustufe (V7.5, zwei Encoder + drei Displays) — siehe [Hardware-Varianten](#hardware-varianten) für die anderen Ausbaustufen.*
+*Aktuellste Hardware-Ausbaustufe (V7.6, zwei Encoder + drei Displays) — siehe [Hardware-Varianten](#hardware-varianten) für die anderen Ausbaustufen.*
 
 ## Hardware-Varianten
 
@@ -16,9 +16,11 @@ Basis für alle Varianten ist ein Heltec LoRa32 V4.2 (ESP32-S3, LoRa-Funktion un
 
 | Hardware | Encoder | Displays | Firmware | Fertiges Firmware-Image |
 |---|---|---|---|---|
-| Einsteiger-Ausbaustufe | 1 | Onboard-OLED (128×64) | [V7.2.2](DM3_Controller_V7.2.2_SingleEncoder/README.md) | [Release v7.2.2-singleencoder](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.2.2-singleencoder) |
-| Zwei-Kanal-Ausbaustufe | 2 (unabhängig) | Onboard-OLED (128×64, geteilt) | [V7.3](DM3_Controller_V7.3_DualEncoder/README.md) | [Release v7.3-dualencoder](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.3-dualencoder) |
-| Vollausbau | 2 (unabhängig) | 2× eigenständiges 128×32 + Onboard-OLED als Menü-Display | [V7.5](DM3_Controller_V7.5_DualEncoder_TripleDisplay/README.md) | [Release v7.5-dualencoder-tripledisplay](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.5-dualencoder-tripledisplay) |
+| Einsteiger-Ausbaustufe | 1 | Onboard-OLED (128×64) | [V7.2.3](DM3_Controller_V7.2.3_SingleEncoder/README.md) | [Release v7.2.2-singleencoder](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.2.2-singleencoder) *(veraltet, siehe Hinweis unten)* |
+| Zwei-Kanal-Ausbaustufe | 2 (unabhängig) | Onboard-OLED (128×64, geteilt) | [V7.3.1](DM3_Controller_V7.3.1_DualEncoder/README.md) | [Release v7.3-dualencoder](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.3-dualencoder) *(veraltet, siehe Hinweis unten)* |
+| Vollausbau | 2 (unabhängig) | 2× eigenständiges 128×32 + Onboard-OLED als Menü-Display | [V7.6](DM3_Controller_V7.6_DualEncoder_TripleDisplay/README.md) | [Release v7.5-dualencoder-tripledisplay](https://github.com/LucaDBellini/DM3-Controller-Live/releases/tag/v7.5-dualencoder-tripledisplay) *(veraltet, siehe Hinweis unten)* |
+
+> **Hinweis (2026-08-05):** der Quellcode oben ist auf dem neuesten Stand (V7.2.3/V7.3.1/V7.6), die verlinkten Firmware-Images in den GitHub Releases sind aber noch die alten Versionen (V7.2.2/V7.3/V7.5) — neue Releases mit frisch kompilierten `.bin`-Images für die aktuellen Versionen stehen noch aus. Bis dahin: selbst aus dem Quellcode kompilieren (siehe [Flashen](#flashen)) für den aktuellen Stand.
 
 Alle drei Firmware-Versionen teilen sich denselben Funktionskern (Kanalsteuerung, WLAN-Profile, Web-Konfigurationsserver, DM3-Protokoll) — Bedienkonzept und Display-Layout unterscheiden sich je nach Hardware. Details siehe jeweiliges Ordner-README.
 
@@ -48,7 +50,8 @@ Wer nicht selbst mit der Arduino IDE kompilieren will: die Spalte "Fertiges Firm
   - Gespeicherte Passwörter stehen im Browser standardmäßig maskiert (Punkte statt Klartext), mit „Anzeigen"-Knopf pro Feld
   - Web-Symbol (kleiner Globus) im Display, wenn der Server gerade erreichbar ist (WLAN oder AP-Fallback)
 - Automatischer Reconnect zu WLAN und DM3, Statusanzeige auf dem Display
-- Ist DM3 verbunden, zeigt das Display zusätzlich die durchschnittliche DM3-Antwortzeit in ms (laufender Mittelwert seit dem letzten Boot); erscheint auch auf der Web-Status-Seite
+- Ist DM3 verbunden, zeigt das Display zusätzlich die zuletzt gemessene DM3-Antwortzeit in ms; erscheint auch auf der Web-Status-Seite
+- **Automatische AP-Auswahl**: findet beim Boot einmalig den 2,4GHz-Access-Point mit der tatsächlich besten (per echter TCP-Connect-Zeit zum DM3 gemessenen) Route, nicht nur dem stärksten Signal — ein AP kann volles Signal haben und trotzdem schlecht angebunden sein. Zusätzlich periodisches RSSI-Roaming als Fallback für echte Funklöcher.
 
 ### Akku & Status
 - Akkustandsanzeige (Symbol mit Füllstand), Messung alle 5 Sekunden über den boardinternen ADC, Mittelwertbildung über 8 Messungen gegen ADC-Rauschen
